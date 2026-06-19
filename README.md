@@ -166,7 +166,7 @@ Scanning an entire drive can be slow, since every file is examined. For a quick 
 
 ## 5. Disk Usage + Delete (GUI)
 
-Like the report above, but interactive: it lists the largest files and lets you **select which to delete through a dialog**. Selected files go to the **Recycle Bin (Windows)** or **Trash (Linux/macOS)**, so they remain recoverable — nothing is permanently deleted.
+Like the report above, but interactive: it lists the largest files and lets you **select which to delete through a dialog**, and **preview a file in its default app before deciding**. Selected files go to the **Recycle Bin (Windows)** or **Trash (Linux/macOS)**, so they remain recoverable — nothing is permanently deleted.
 
 **PowerShell** — opens a checkbox grid (WinForms):
 ```powershell
@@ -193,6 +193,12 @@ Like the report above, but interactive: it lists the largest files and lets you 
 - **Windows** — a full checkbox grid (size + path columns). Selected files are sent to the Recycle Bin via the `Microsoft.VisualBasic.FileIO` API, exactly like deleting from Explorer.
 - **Linux** — a `zenity` checklist dialog if `zenity` is installed; otherwise a numbered terminal multi-select. Files go to Trash via `trash-put` or `gio trash`.
 - **macOS** — a native multi-select list via `osascript` (shows paths only — sizes don't fit that dialog type). Files go to Trash via Finder.
+
+### Previewing a file before deleting
+
+- **Windows** — **double-click any row** to open that file in its default app. (Double-clicking the checkbox column only toggles it; it doesn't open.)
+- **Linux** — the zenity dialog has a **"Preview selected"** button; pick a file and it opens via `xdg-open`, then the list reappears so you can keep choosing what to delete. (zenity has no native double-click event, so this button is the equivalent.)
+- **macOS** — the `osascript` list dialog has no preview button; previewing there would require a different UI toolkit, so it isn't available in this version.
 
 Every deletion is confirmed before it happens, and because files land in the Recycle Bin / Trash you can restore them from there if needed.
 

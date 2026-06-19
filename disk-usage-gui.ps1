@@ -8,7 +8,7 @@ param(
 )
 
 if (-not (Test-Path $Path))
-{ Write-Host "Path not found: $Path" -ForegroundColor Red; return 
+{ Write-Host "Path not found: $Path" -ForegroundColor Red; return
 }
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -24,7 +24,7 @@ $files = Get-ChildItem $Path -Recurse -File -ErrorAction SilentlyContinue |
     Select-Object -First $TopFiles
 
 if (-not $files)
-{ Write-Host "No files >= $MinSizeMB MB found under $Path." -ForegroundColor Yellow; return 
+{ Write-Host "No files >= $MinSizeMB MB found under $Path." -ForegroundColor Yellow; return
 }
 
 # --- Build the form ---
@@ -77,6 +77,31 @@ foreach ($f in $files)
     $grid.Rows[$row].Cells["Path"].Value = $f.FullName
 }
 $form.Controls.Add($grid)
+# Double-click a row to open the file in its default app
+$grid.Add_CellDoubleClick({
+        param($sender, $e)
+        if ($e.RowIndex -lt 0)
+        { return
+        }   # ignore header clicks
+        if ($grid.Columns[$e.ColumnIndex].Name -eq "Delete")
+        { return 
+        }
+        $path = $grid.Rows[$e.RowIndex].Cells["Path"].Value
+        if ($path -and (Test-Path $path))
+        {
+            try
+            {
+                Start-Process -FilePath $path -ErrorAction Stop
+            } catch
+            {
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Could not open:`n$path`n`n$($_.Exception.Message)", "Open failed") | Out-Null
+            }
+        } else
+        {
+            [System.Windows.Forms.MessageBox]::Show("File no longer exists:`n$path", "Not found") | Out-Null
+        }
+    })
 
 # Buttons
 $btnDelete = New-Object System.Windows.Forms.Button
@@ -114,7 +139,7 @@ $btnDelete.Add_Click({
             "Send $($toDelete.Count) file(s) to the Recycle Bin?",
             "Confirm", "YesNo", "Question")
         if ($confirm -ne "Yes")
-        { return 
+        { return
         }
 
         $done = 0
@@ -138,7 +163,7 @@ $btnDelete.Add_Click({
         for ($i = $grid.Rows.Count - 1; $i -ge 0; $i--)
         {
             if ($grid.Rows[$i].Cells["Delete"].Value -eq $true)
-            { $grid.Rows.RemoveAt($i) 
+            { $grid.Rows.RemoveAt($i)
             }
         }
     })

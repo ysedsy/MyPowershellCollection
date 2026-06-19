@@ -59,29 +59,32 @@ SELECTED=()
 
 # --- GUI path: zenity checklist (Linux) ---
 if command -v zenity >/dev/null 2>&1; then
-  # Build zenity args: FALSE <size> <path> per row
-  args=()
-  while IFS=$'\t' read -r size path; do
-    args+=(FALSE "$size" "$path")
-  done < "$TMP"
-  chosen="$(zenity --list --checklist \
-    --title="Disk Usage - select files to send to Trash" \
-    --text="Largest files under $PATH_TO_SCAN" \
-    --column="Del" --column="Size" --column="Path" \
-    --width=900 --height=600 --separator=$'\n' "${args[@]}" 2>/dev/null)" || { rm -f "$TMP"; exit 0; }
-  [[ -n "$chosen" ]] && mapfile -t SELECTED <<< "$chosen"
-
-# --- GUI path: macOS chooser ---
-elif [[ "$OS" == "Darwin" ]] && command -v osascript >/dev/null 2>&1; then
-  # Present a multiple-selection list of paths
-  list_items="$(cut -f2 "$TMP" | sed 's/"/\\"/g' | awk '{printf "\"%s\", ", $0}' | sed 's/, $//')"
-  chosen="$(osascript -e "set theList to {$list_items}" \
-    -e 'set picked to choose from list theList with title "Disk Usage" with prompt "Select files to send to Trash" with multiple selections allowed' \
-    -e 'set AppleScript'"'"'s text item delimiters to linefeed' \
-    -e 'if picked is false then return ""' \
-    -e 'picked as text' 2>/dev/null)"
-  [[ -n "$chosen" ]] && mapfile -t SELECTED <<< "$chosen"
-
+  while true; do
+    args=()
+    while IFS=$'\t' read -r size path; do
+      args+=(FALSE "$size" "$path")
+    done < "$TMP"
+    chosen="$(zenity --list --checklist \
+      --title="Disk Usage - check files to delete (Trash)" \
+      --text="Tick files to delete. Or tick ONE and choose Preview to open it first." \
+      --column="Sel" --column="Size" --column="Path" \
+      --width=900 --height=600 --separator=$'\n' \
+      --ok-label="Delete selected" --extra-button="Preview selected" \
+      "${args[@]}" 2>/dev/null)"
+    rc=$?
+    # rc=0 -> Delete pressed; chosen holds ticked rows
+    # "Preview selected" comes back as the literal button text on stdout
+    if [[ "$chosen" == "Preview selected" ]]; then
+      # zenity quirk: extra-button text replaces the row output, so ask which to open
+      preview="$(zenity --list --title="Preview" --text="Pick one file to open" \
+        --column="Path" $(cut -f2 "$TMP") --width=900 --height=500 2>/dev/null)"
+      [[ -n "$preview" ]] && xdg-open "$preview" >/dev/null 2>&1 &
+      continue   # reshow the checklist after previewing
+    fi
+    [[ $rc -ne 0 ]] && { rm -f "$TMP"; exit 0; }   # cancelled
+    [[ -n "$chosen" ]] && mapfile -t SELECTED <<< "$chosen"
+    break
+  done
 # --- Terminal fallback: numbered multi-select ---
 else
   echo
