@@ -166,7 +166,7 @@ Scanning an entire drive can be slow, since every file is examined. For a quick 
 
 ## 5. Disk Usage + Delete (GUI)
 
-Like the report above, but interactive: it lists the largest files and lets you **select which to delete through a dialog**, and **preview a file in its default app before deciding**. Selected files go to the **Recycle Bin (Windows)** or **Trash (Linux/macOS)**, so they remain recoverable — nothing is permanently deleted.
+Like the report above, but interactive: it lists the largest files, lets you **filter them with an optional regex**, **select which to delete through a dialog**, and **preview a file in its default app before deciding**. After each deletion it **rescans automatically**, so the next-largest files move up into the list. Selected files go to the **Recycle Bin (Windows)** or **Trash (Linux/macOS)**, so they remain recoverable — nothing is permanently deleted.
 
 **PowerShell** — opens a checkbox grid (WinForms):
 ```powershell
@@ -193,6 +193,21 @@ Like the report above, but interactive: it lists the largest files and lets you 
 - **Windows** — a full checkbox grid (size + path columns). Selected files are sent to the Recycle Bin via the `Microsoft.VisualBasic.FileIO` API, exactly like deleting from Explorer.
 - **Linux** — a `zenity` checklist dialog if `zenity` is installed; otherwise a numbered terminal multi-select. Files go to Trash via `trash-put` or `gio trash`.
 - **macOS** — a native multi-select list via `osascript` (shows paths only — sizes don't fit that dialog type). Files go to Trash via Finder.
+
+### Filtering with regex (optional)
+
+The list can be narrowed with a regular expression. Filtering is **optional** — the default pattern is `.*`, which matches everything, so by default you see all files. Type a different pattern to narrow the list.
+
+- **Windows** — a **Regex** text box at the top filters the grid live as you type. A checkbox toggles whether the pattern matches the **full path** or just the **filename** (default: filename). An invalid pattern simply tints the box pink instead of erroring.
+- **Linux / macOS** — a **"Set regex"** button (zenity) or an `r` command (terminal) prompts for the pattern and the match mode (name vs path). The default `.*` is skipped entirely for speed, so leaving it unchanged adds no overhead.
+
+Matching uses .NET regex on Windows and `grep -E` (POSIX extended) on Unix; both share common syntax like `\.mp4$`, `^backup`, or `2023|2024`.
+
+### Auto-rescan after deleting
+
+After files are sent to the Recycle Bin / Trash, the tool performs a **full rescan from disk** and refreshes the list, so the next-largest files appear automatically without restarting. On Windows your current regex filter is preserved across the rescan; on Linux/macOS the scan-select-delete loop simply repeats. You can also trigger a rescan manually with the **"Rescan now"** button (Windows).
+
+Note: a full rescan after every deletion is accurate but slower on very large trees. For big scans, point `-Path` / `--path` at a specific subfolder rather than the whole home directory or drive.
 
 ### Previewing a file before deleting
 
